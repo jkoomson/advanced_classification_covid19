@@ -410,10 +410,10 @@ xgb_grid <- expand.grid(
 )
 
 # Here, we use random search over the grid for efficiency
+
 ctrl_xgb <- trainControl(
-  method = "repeatedcv",
-  number = 10,
-  repeats = 5,
+  method = "cv",
+  number = 3,
   classProbs = TRUE,
   summaryFunction = multiClassSummary,
   savePredictions = "final",
