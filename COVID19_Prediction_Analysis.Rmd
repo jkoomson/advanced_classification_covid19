@@ -106,6 +106,9 @@ for (pkg in required) {
            error = function(e) message("Note: ", pkg, " not loaded"))
 }
 
+library(tidyverse)
+library(dplyr)
+
 cat("Package loading complete.\n")
 ```
 
