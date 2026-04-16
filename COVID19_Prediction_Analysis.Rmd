@@ -76,34 +76,31 @@ No single classification algorithm dominates across all data structures. Linear 
 The dataset is identical to the clustering study 70 countries with 11 features sourced from Our World in Data (OWID). See the clustering paper for full documentation of data provenance and variable definitions.
 
 ```{r load-packages}
-install.packages("tidyverse")
-required <- c(
-  "tidyverse", "caret", "knitr", "kableExtra",
-  "nnet", "e1071", "randomForest", "xgboost",
-  "class", "kernlab", "neuralnet", "naivebayes",
-  "pROC", "MLmetrics", "ROSE",
-  "corrplot", "viridis", "patchwork",
-  "scales", "ggrepel", "reshape2"
-)
-
-# Install any missing ones
-install.packages(setdiff(required, rownames(installed.packages())))
-
-# Load them all
-invisible(lapply(required, library, character.only = TRUE))
-
-cat("Package loading complete.\n")
-# Now generate the manifest
-rsconnect::writeManifest(
-  appFiles      = c("COVID19_Prediction_Analysis.Rmd",
-                    "covid19_country_data.csv"),
-  appPrimaryDoc = "COVID19_Prediction_Analysis.Rmd"
-)
-
+# Load all required packages (installed via manifest.json)
 library(tidyverse)
 library(dplyr)
+library(caret)
+library(knitr)
+library(kableExtra)
+library(nnet)
+library(e1071)
+library(randomForest)
+library(xgboost)
+library(class)
+library(kernlab)
+library(neuralnet)
+library(naivebayes)
+library(pROC)
+library(MLmetrics)
+library(ROSE)
+library(corrplot)
+library(viridis)
+library(patchwork)
+library(scales)
+library(ggrepel)
+library(reshape2)
 
-cat("Package loading complete.\n")
+
 ```
 
 ```{r load-data}
