@@ -76,9 +76,14 @@ No single classification algorithm dominates across all data structures. Linear 
 The dataset is identical to the clustering study 70 countries with 11 features sourced from Our World in Data (OWID). See the clustering paper for full documentation of data provenance and variable definitions.
 
 ```{r load-packages}
-# Load all required packages (installed via manifest.json)
-library(tidyverse)
+library(ggplot2)
 library(dplyr)
+library(tidyr)
+library(readr)
+library(purrr)
+library(stringr)
+library(tibble)
+library(forcats)
 library(caret)
 library(knitr)
 library(kableExtra)
@@ -100,6 +105,7 @@ library(scales)
 library(ggrepel)
 library(reshape2)
 
+cat("Package loading complete.\n")
 
 ```
 
