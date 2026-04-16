@@ -76,35 +76,29 @@ No single classification algorithm dominates across all data structures. Linear 
 The dataset is identical to the clustering study 70 countries with 11 features sourced from Our World in Data (OWID). See the clustering paper for full documentation of data provenance and variable definitions.
 
 ```{r load-packages}
+install.packages("tidyverse")
 required <- c(
-  # Core
   "tidyverse", "caret", "knitr", "kableExtra",
-  # Models
-  "nnet",         # Multinomial Logistic Regression & ANN
-  "e1071",        # SVM, Naive Bayes
-  "randomForest", # Random Forest
-  "xgboost",      # XGBoost
-  "class",        # KNN
-  "kernlab",      # SVM kernels
-  "neuralnet",    # Neural Network (alternative)
-  "keras3",       # Deep Learning ANN (if TensorFlow available)
-  # Evaluation
-  "pROC",         # ROC curves
-  "MLmetrics",    # ML metrics
-  "ROSE",         # Class balancing
-  # Visualization
-  "corrplot", "viridis", "patchwork", "scales",
-  "ggrepel", "reshape2"
+  "nnet", "e1071", "randomForest", "xgboost",
+  "class", "kernlab", "neuralnet", "naivebayes",
+  "pROC", "MLmetrics", "ROSE",
+  "corrplot", "viridis", "patchwork",
+  "scales", "ggrepel", "reshape2"
 )
 
-for (pkg in required) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    tryCatch(install.packages(pkg, dependencies = TRUE, quiet = TRUE),
-             error = function(e) message("Note: ", pkg, " not available - will use alternative"))
-  }
-  tryCatch(suppressPackageStartupMessages(library(pkg, character.only = TRUE)),
-           error = function(e) message("Note: ", pkg, " not loaded"))
-}
+# Install any missing ones
+install.packages(setdiff(required, rownames(installed.packages())))
+
+# Load them all
+invisible(lapply(required, library, character.only = TRUE))
+
+cat("Package loading complete.\n")
+# Now generate the manifest
+rsconnect::writeManifest(
+  appFiles      = c("COVID19_Prediction_Analysis.Rmd",
+                    "covid19_country_data.csv"),
+  appPrimaryDoc = "COVID19_Prediction_Analysis.Rmd"
+)
 
 library(tidyverse)
 library(dplyr)
