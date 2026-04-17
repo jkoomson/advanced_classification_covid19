@@ -948,20 +948,21 @@ p4 <- ggplot(model_svm_radial$results, aes(C, Accuracy)) +
 # With the deployment version (10 resamples), some comparisons may
 # not have enough observations. Full analysis (50 resamples) 
 # produces complete pairwise comparisons.
+# also, pairwise statistical comparison is skipped in the deployment version.
+# With 10 resamples, t.test() does not have enough observations to run.
+# To reproduce the full pairwise comparison, run locally with:
+#   number = 10, repeats = 5  (50 resamples)
+# and uncomment the code below:
+#
+# diffs         <- diff(cv_results)
+# summary_diffs <- summary(diffs)
+# cat("Pairwise differences in accuracy (from repeated CV):\n")
+# print(summary_diffs)
 
-
-tryCatch({
-  diffs         <- diff(cv_results)
-  summary_diffs <- summary(diffs)
-  cat("Pairwise differences in accuracy (from repeated CV):\n")
-  print(summary_diffs)
-}, error = function(e) {
-  cat("Note: Pairwise t-tests require more resamples for reliable inference.\n")
-  cat("Run the full analysis (10-fold x 5 repeats) for complete results.\n")
-  cat("\nModel accuracy summary:\n")
-  acc_summary <- summary(cv_results)$statistics$Accuracy
-  print(round(acc_summary, 4))
-})
+# Deployment version: print accuracy summary instead
+acc_summary <- summary(cv_results)$statistics$Accuracy
+cat("Model Accuracy Summary (Cross-Validation):\n")
+print(round(acc_summary, 4))
 ```
 
 ---
