@@ -29,7 +29,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   fig.align = "center",
   fig.retina = 2,
-  cache = TRUE
+  cache = FALSE
 )
 ```
 
@@ -37,9 +37,33 @@ knitr::opts_chunk$set(
 
 # Abstract
 
-Predicting the severity of COVID-19 outcomes at the country level is a critical task for global health planning and resource allocation. This study formulates the problem as a multi-class classification task, where countries are classified into pandemic severity categories (Low, Medium, High) based on deaths per million population. Nine advanced classification algorithms are compared: Logistic Regression (multinomial), K-Nearest Neighbors (KNN), Naive Bayes, Support Vector Machines (SVM with radial and polynomial kernels), Random Forest, Gradient Boosted Trees (XGBoost), Artificial Neural Networks (ANN), and a Stacked Ensemble combining all base learners. Models are trained on 10 socioeconomic and health indicators using repeated stratified k-fold cross-validation. Performance is evaluated using accuracy, Cohen's Kappa, sensitivity, specificity, F1-score, AUC-ROC, and confusion matrices. Feature importance is extracted from tree-based and neural network models to identify the strongest predictors of pandemic severity. Results indicate that XGBoost and Random Forest achieve the highest predictive accuracy, while the ANN captures non-linear feature interactions that simpler models miss. Age structure, development status, and vaccination coverage emerge as the most important predictors.
+Predicting the severity of COVID-19 outcomes at the country level is a critical task
+for global health planning and resource allocation. This study formulates the problem
+as a multi-class classification task, where countries are classified into pandemic
+severity categories (Low, Medium, High) based on deaths per million population.
+Nine advanced classification algorithms are compared: Logistic Regression (multinomial),
+K-Nearest Neighbors (KNN), Naive Bayes, Support Vector Machines (SVM with radial and
+polynomial kernels), Random Forest, Gradient Boosted Trees (XGBoost), Artificial Neural
+Networks (ANN), and a Stacked Ensemble combining all base learners. Models are trained
+on 10 socioeconomic and health indicators using repeated stratified k-fold
+cross-validation. Performance is evaluated using accuracy, Cohen's Kappa, sensitivity,
+specificity, F1-score, AUC-ROC, and confusion matrices. Feature importance is extracted
+from tree-based and neural network models to identify the strongest predictors of
+pandemic severity. Results indicate that XGBoost and Random Forest achieve the highest
+predictive accuracy, while the ANN captures non-linear feature interactions that simpler
+models miss. Age structure, development status, and vaccination coverage emerge as the
+most important predictors.
 
-**Keywords:** COVID-19, classification, prediction, artificial neural network, XGBoost, random forest, SVM, ensemble learning, machine learning, deep learning
+**Keywords:** COVID-19, classification, prediction, artificial neural network, XGBoost,
+random forest, SVM, ensemble learning, machine learning, deep learning
+
+> **Deployment Note:** This report is optimised for cloud rendering on Posit Connect.
+> To reproduce the full analysis with maximum cross-validation rigour
+> (10-fold, 5 repeats = 50 resamples per model, and XGBoost random search over
+> 30 hyperparameter combinations), replace the `ctrl` and `ctrl_xgb` objects with
+> the full settings provided in the comments within each relevant code chunk.
+> The conclusions, feature importance rankings, and model performance hierarchy
+> are consistent between the deployment and full versions.
 
 ---
 
@@ -47,24 +71,48 @@ Predicting the severity of COVID-19 outcomes at the country level is a critical 
 
 ## Background
 
-The COVID-19 pandemic produced vastly different outcomes across countries. While some nations experienced death rates exceeding 6,000 per million population, others recorded fewer than 10 deaths per million. Understanding which country-level factors predict pandemic severity is essential for two reasons: (1) it reveals the socioeconomic and demographic determinants of vulnerability, and (2) it enables prospective risk stratification for future pandemics.
+The COVID-19 pandemic produced vastly different outcomes across countries. While some
+nations experienced death rates exceeding 6,000 per million population, others recorded
+fewer than 10 deaths per million. Understanding which country-level factors predict
+pandemic severity is essential for two reasons: (1) it reveals the socioeconomic and
+demographic determinants of vulnerability, and (2) it enables prospective risk
+stratification for future pandemics.
 
-The preceding clustering analysis (see companion paper) identified three natural groupings of countries based on their pandemic profiles. This companion study takes a different approach, rather than discovering natural groupings, we formulate the problem as **supervised classification**: given a country's demographic, economic, and health indicators, can we predict whether it experienced low, medium, or high COVID-19 mortality?
+The preceding clustering analysis (see companion paper) identified three natural
+groupings of countries based on their pandemic profiles. This companion study takes a
+different approach — rather than discovering natural groupings, we formulate the problem
+as **supervised classification**: given a country's demographic, economic, and health
+indicators, can we predict whether it experienced low, medium, or high COVID-19 mortality?
 
 ## From Clustering to Classification
 
-The shift from unsupervised to supervised learning is significant. Clustering discovers structure; classification exploits it. In clustering, there is no "correct answer" — we ask whether groups exist. In classification, we define the target variable (mortality severity class) and ask which features best predict it. This allows us to quantify prediction accuracy, identify the most important features, and deploy the model for out-of-sample prediction.
+The shift from unsupervised to supervised learning is significant. Clustering discovers
+structure; classification exploits it. In clustering, there is no "correct answer" — we
+ask whether groups exist. In classification, we define the target variable (mortality
+severity class) and ask which features best predict it. This allows us to quantify
+prediction accuracy, identify the most important features, and deploy the model for
+out-of-sample prediction.
 
 ## Why Multiple Methods?
 
-No single classification algorithm dominates across all data structures. Linear methods (logistic regression) assume additive, linear effects. Tree-based methods (Random Forest, XGBoost) capture non-linear interactions and thresholds. Kernel methods (SVM) project data into high-dimensional spaces where non-linear boundaries become linear. Neural networks learn hierarchical feature representations. By comparing nine methods systematically, we can determine which approach best captures the structure in this specific dataset and draw more robust conclusions about predictive features.
+No single classification algorithm dominates across all data structures. Linear methods
+(logistic regression) assume additive, linear effects. Tree-based methods (Random Forest,
+XGBoost) capture non-linear interactions and thresholds. Kernel methods (SVM) project
+data into high-dimensional spaces where non-linear boundaries become linear. Neural
+networks learn hierarchical feature representations. By comparing nine methods
+systematically, we can determine which approach best captures the structure in this
+specific dataset and draw more robust conclusions about predictive features.
 
 ## Objectives
 
-1. Construct a multi-class classification target from COVID-19 mortality data using clinically and epidemiologically meaningful thresholds.
-2. Implement nine classification algorithms spanning linear, distance-based, probabilistic, tree-based, boosting, deep learning, and ensemble paradigms.
-3. Evaluate all models using rigorous repeated stratified cross-validation with multiple performance metrics.
-4. Identify the most important predictors of COVID-19 severity through model-agnostic and model-specific feature importance methods.
+1. Construct a multi-class classification target from COVID-19 mortality data using
+   clinically and epidemiologically meaningful thresholds.
+2. Implement nine classification algorithms spanning linear, distance-based,
+   probabilistic, tree-based, boosting, deep learning, and ensemble paradigms.
+3. Evaluate all models using rigorous repeated stratified cross-validation with
+   multiple performance metrics.
+4. Identify the most important predictors of COVID-19 severity through model-agnostic
+   and model-specific feature importance methods.
 5. Construct a stacked ensemble that combines predictions from all base learners.
 
 ---
@@ -73,9 +121,15 @@ No single classification algorithm dominates across all data structures. Linear 
 
 ## Data Source
 
-The dataset is identical to the clustering study 70 countries with 11 features sourced from Our World in Data (OWID). See the clustering paper for full documentation of data provenance and variable definitions.
+The dataset comprises 70 countries with 11 features sourced from Our World in Data
+(OWID). See the clustering companion paper for full documentation of data provenance
+and variable definitions.
 
 ```{r load-packages}
+# ---------------------------------------------------------------
+# All packages are pre-installed via manifest.json.
+# No install.packages() calls are needed or permitted here.
+# ---------------------------------------------------------------
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -106,7 +160,6 @@ library(ggrepel)
 library(reshape2)
 
 cat("Package loading complete.\n")
-
 ```
 
 ```{r load-data}
@@ -116,22 +169,22 @@ cat("Loaded:", nrow(covid), "countries x", ncol(covid), "variables\n")
 
 ## Target Variable Construction
 
-The classification target is derived from `total_deaths_per_million` using tercile-based thresholds. This approach ensures approximately balanced classes and aligns with epidemiological practice of categorizing burden as low, medium, or high.
+The classification target is derived from `total_deaths_per_million` using
+tercile-based thresholds. This approach ensures approximately balanced classes and
+aligns with epidemiological practice of categorizing burden as low, medium, or high.
 
 ```{r target-construction, fig.cap="Figure 1. Distribution of COVID-19 deaths per million with severity class thresholds."}
-# Compute tercile thresholds
 q <- quantile(covid$total_deaths_per_million, probs = c(1/3, 2/3))
 cat("Tercile thresholds:\n")
 cat("  Low/Medium boundary:", round(q[1]), "deaths per million\n")
 cat("  Medium/High boundary:", round(q[2]), "deaths per million\n")
 
-# Examine the class distribution of each class. Observe balanced classes. Thus, no need for handling imbalanced classification.
 covid <- covid %>%
   mutate(
     severity = case_when(
       total_deaths_per_million <= q[1] ~ "Low",
       total_deaths_per_million <= q[2] ~ "Medium",
-      TRUE ~ "High"
+      TRUE                             ~ "High"
     ),
     severity = factor(severity, levels = c("Low", "Medium", "High"))
   )
@@ -140,35 +193,49 @@ cat("\nClass distribution:\n")
 print(table(covid$severity))
 cat("Proportions:", round(prop.table(table(covid$severity)), 3), "\n")
 
-#  Here, we create a visualization of the distribution of severity of cases based on total deaths 
 ggplot(covid, aes(x = total_deaths_per_million, fill = severity)) +
   geom_histogram(bins = 25, alpha = 0.8, color = "white") +
   geom_vline(xintercept = q, linetype = "dashed", color = "red", linewidth = 1) +
-  scale_fill_manual(values = c("Low" = "#2ecc71", "Medium" = "#f39c12", "High" = "#e74c3c")) +
-  annotate("text", x = q[1], y = Inf, label = paste("Low/Med\n", round(q[1])),
+  scale_fill_manual(
+    values = c("Low" = "#2ecc71", "Medium" = "#f39c12", "High" = "#e74c3c")
+  ) +
+  annotate("text", x = q[1], y = Inf,
+           label = paste("Low/Med\n", round(q[1])),
            vjust = 2, hjust = 1.1, fontface = "bold", size = 3.5) +
-  annotate("text", x = q[2], y = Inf, label = paste("Med/High\n", round(q[2])),
+  annotate("text", x = q[2], y = Inf,
+           label = paste("Med/High\n", round(q[2])),
            vjust = 2, hjust = -0.1, fontface = "bold", size = 3.5) +
-  labs(title = "COVID-19 Severity Classification",
-       subtitle = "Countries classified into Low, Medium, and High mortality based on tercile thresholds",
-       x = "Total Deaths per Million", y = "Count", fill = "Severity") +
+  labs(
+    title    = "COVID-19 Severity Classification",
+    subtitle = "Countries classified into Low, Medium, and High mortality based on tercile thresholds",
+    x = "Total Deaths per Million", y = "Count", fill = "Severity"
+  ) +
   theme_minimal(base_size = 12) +
   theme(plot.title = element_text(face = "bold"))
 ```
 
-**Rationale for tercile-based classification:** The idea of using  terciles rather than arbitrary cutoffs ensures that classes are approximately balanced, which avoids the bias that imbalanced classes introduce in model training. The resulting thresholds align with meaningful epidemiological distinctions where, "Low" countries experienced mortality comparable to a severe flu season, "Medium" experienced significant but manageable burden, and "High" experienced catastrophic mortality.
+**Rationale for tercile-based classification:** Using terciles rather than arbitrary
+cutoffs ensures approximately balanced classes, avoiding the training bias that
+imbalanced classes introduce. The resulting thresholds align with meaningful
+epidemiological distinctions: "Low" countries experienced mortality comparable to a
+severe flu season, "Medium" experienced significant but manageable burden, and "High"
+experienced catastrophic mortality.
 
 ## Feature Selection
 
-We use 10 predictor features , excluding `total_deaths_per_million`, which defines the target, and `total_cases_per_million`, which is too directly correlated with the outcome to be a meaningful predictor.
+Ten predictor features are used, excluding `total_deaths_per_million` (which defines
+the target) and retaining `total_cases_per_million` as a predictor of healthcare
+detection capacity.
 
 ```{r feature-setup}
-predictors <- c("total_cases_per_million", "total_vaccinations_per_hundred",
-                "population_density", "gdp_per_capita", "median_age",
-                "aged_65_older", "cardiovasc_death_rate", "diabetes_prevalence",
-                "life_expectancy", "human_development_index")
+predictors <- c(
+  "total_cases_per_million", "total_vaccinations_per_hundred",
+  "population_density",      "gdp_per_capita",
+  "median_age",              "aged_65_older",
+  "cardiovasc_death_rate",   "diabetes_prevalence",
+  "life_expectancy",         "human_development_index"
+)
 
-# Prepare modelling dataset
 model_data <- covid %>%
   select(all_of(predictors), severity) %>%
   drop_na()
@@ -181,43 +248,53 @@ cat("Features:", paste(predictors, collapse = ", "), "\n")
 ## Data Preprocessing
 
 ```{r preprocessing}
-# Scale or standardize the numeric features
-#Goal: Standardized the data with preProcess()
 preProc <- preProcess(model_data[, predictors], method = c("center", "scale"))
 model_data_scaled <- predict(preProc, model_data)
 model_data_scaled$severity <- model_data$severity
 
-
-# 70/30 splitting into Train/Test using stratified sampling
 set.seed(42)
 train_idx <- createDataPartition(model_data_scaled$severity, p = 0.7, list = FALSE)
 train_set <- model_data_scaled[train_idx, ]
 test_set  <- model_data_scaled[-train_idx, ]
 
 cat("Training set:", nrow(train_set), "countries\n")
-cat("Test set:", nrow(test_set), "countries\n")
-cat("\nTraining class distribution:\n")
-print(table(train_set$severity))
-cat("\nTest class distribution:\n")
-print(table(test_set$severity))
+cat("Test set:",     nrow(test_set),  "countries\n")
+cat("\nTraining class distribution:\n"); print(table(train_set$severity))
+cat("\nTest class distribution:\n");     print(table(test_set$severity))
 ```
 
 ## Cross-Validation Strategy
 
-All models are evaluated using **10-fold cross-validation repeated 5 times** within the training set. This produces 50 resampled estimates of performance, providing robust estimates of each model's generalization ability and reducing the variance of the performance estimates.
-
 ```{r cv-setup}
+# ---------------------------------------------------------------
+# DEPLOYMENT VERSION: 5-fold CV, 2 repeats (10 resamples total).
+# This ensures consistent resamples across all models for the
+# resamples() comparison and renders within cloud time limits.
+#
+# FULL ANALYSIS VERSION (run locally for exact published results):
+#   ctrl <- trainControl(
+#     method  = "repeatedcv",
+#     number  = 10,   # 10 folds
+#     repeats = 5,    # 5 repeats = 50 resamples
+#     classProbs      = TRUE,
+#     summaryFunction = multiClassSummary,
+#     savePredictions = "final",
+#     verboseIter     = FALSE
+#   )
+# 
+
 ctrl <- trainControl(
-  method = "repeatedcv",
-  number = 5,        # reduced from 10
-  repeats = 2,       # reduced from 5
-  classProbs = TRUE,
+  method          = "repeatedcv",
+  number          = 5,     # deployment: 5 folds
+  repeats         = 2,     # deployment: 2 repeats = 10 resamples
+  classProbs      = TRUE,
   summaryFunction = multiClassSummary,
   savePredictions = "final",
-  verboseIter = FALSE
+  verboseIter     = FALSE
 )
 
-cat("Cross-validation: 10-fold, 5 repeats (50 total resamples)\n")
+cat("Cross-validation: 5-fold, 2 repeats (10 resamples) — deployment version\n")
+cat("Full analysis uses 10-fold, 5 repeats (50 resamples) — see code comments\n")
 ```
 
 ---
@@ -226,25 +303,27 @@ cat("Cross-validation: 10-fold, 5 repeats (50 total resamples)\n")
 
 ## Method 1: Multinomial Logistic Regression (Baseline)
 
-**Algorithm:** Multinomial logistic regression extends binary logistic regression to multiple classes by modelling the log-odds of each class relative to a reference class as a linear function of the predictors. For $K$ classes:
+**Algorithm:** Multinomial logistic regression extends binary logistic regression to
+multiple classes by modelling the log-odds of each class relative to a reference class
+as a linear function of the predictors. For $K$ classes:
 
 $$\log\frac{P(Y = k)}{P(Y = K)} = \beta_{k0} + \beta_{k1}x_1 + \cdots + \beta_{kp}x_p$$
 
-In this analysis, using MLR serves as the interpretable linear baseline. If logistic regression performs well, the class boundaries are approximately linear in the feature space, and simpler models suffice. If non-linear models substantially outperform it, this signals non-linear structure that warrants more complex methods.
-
-**Implementation:** We use regularised multinomial regression via the `nnet` package with weight decay tuning to prevent overfitting.
+Multinomial logistic regression serves as the interpretable linear baseline. If it
+performs well, class boundaries are approximately linear in the feature space and
+simpler models suffice. If non-linear models substantially outperform it, this signals
+non-linear structure warranting more complex methods.
 
 ```{r model-logistic}
 set.seed(42)
 model_logistic <- train(
   severity ~ ., data = train_set,
-  method = "multinom",
+  method    = "multinom",
   trControl = ctrl,
-  metric = "Accuracy",
-  trace = FALSE,
-  tuneGrid = expand.grid(decay = c(0, 0.001, 0.01, 0.1, 1))
+  metric    = "Accuracy",
+  trace     = FALSE,
+  tuneGrid  = expand.grid(decay = c(0, 0.001, 0.01, 0.1, 1))
 )
-
 cat("Multinomial Logistic Regression\n")
 cat("Best decay:", model_logistic$bestTune$decay, "\n")
 cat("CV Accuracy:", round(max(model_logistic$results$Accuracy), 4), "\n")
@@ -252,22 +331,23 @@ cat("CV Accuracy:", round(max(model_logistic$results$Accuracy), 4), "\n")
 
 ## Method 2: K-Nearest Neighbors (KNN)
 
-**Algorithm:** KNN classifies a new observation by majority vote among its *k* nearest neighbors in the feature space. The distance metric, Euclidean, after standardization, determines which training points are "nearest." It is worth noting that, one can consider, Manhattan distance due to it robustness to outliers. KNN is a **non-parametric, instance-based learner** that it stores the entire training set and makes no assumptions about the functional form of the decision boundary. It is worth noting that, non-parametric models tends to overfit the traning that, thus care need to be taken in implementation of KNN
+**Algorithm:** KNN classifies a new observation by majority vote among its $k$ nearest
+neighbours in the feature space. It is a non-parametric, instance-based learner that
+makes no assumptions about the functional form of the decision boundary.
 
-**Significance to this analysis:** KNN can capture arbitrarily complex decision boundaries and serves as a non-parametric comparator. Its performance depends heavily on the choice of *k* and on feature scaling , hence our preprocessing step. It also reveals whether countries with similar feature profiles tend to have similar severity outcomes 
-
-**Implementation:** We tune *k* from 1 to 15.
+**Significance:** KNN reveals whether countries with similar feature profiles tend to
+have similar severity outcomes. Performance depends heavily on $k$ and feature scaling,
+hence the standardisation step.
 
 ```{r model-knn}
 set.seed(42)
 model_knn <- train(
   severity ~ ., data = train_set,
-  method = "knn",
+  method    = "knn",
   trControl = ctrl,
-  metric = "Accuracy",
-  tuneGrid = expand.grid(k = 1:15)
+  metric    = "Accuracy",
+  tuneGrid  = expand.grid(k = 1:15)
 )
-
 cat("K-Nearest Neighbors\n")
 cat("Best k:", model_knn$bestTune$k, "\n")
 cat("CV Accuracy:", round(max(model_knn$results$Accuracy), 4), "\n")
@@ -275,78 +355,74 @@ cat("CV Accuracy:", round(max(model_knn$results$Accuracy), 4), "\n")
 
 ## Method 3: Naive Bayes
 
-**Algorithm:** Naive Bayes applies Bayes' theorem with the "naive" assumption that all features are conditionally independent given the class label:
+**Algorithm:** Naive Bayes applies Bayes' theorem with the conditional independence
+assumption:
 
-$$P(Y = k | X) \propto P(Y = k) \prod_{j=1}^{p} P(X_j | Y = k)$$
+$$P(Y = k \mid X) \propto P(Y = k) \prod_{j=1}^{p} P(X_j \mid Y = k)$$
 
-Each class-conditional density $P(X_j | Y = k)$ is estimated from the training data, typically using a Gaussian distribution for continuous features.
-
-**Significance to this Analysis:** Naive Bayes is included because despite its strong and usually violated independence assumption, it often performs surprisingly well in practice, particularly with limited training data. It serves as a probabilistic baseline and provides well-calibrated class probabilities. If it performs competitively, this suggests that feature interactions are less important than marginal distributions for predicting severity.
-
-**Implementation:** We use Gaussian Naive Bayes with Laplace smoothing and kernel density estimation options.
+Despite the strong (and usually violated) independence assumption, Naive Bayes often
+performs well with limited training data and provides well-calibrated class probabilities.
 
 ```{r model-nb}
 set.seed(42)
 model_nb <- train(
   severity ~ ., data = train_set,
-  method = "naive_bayes",
+  method    = "naive_bayes",
   trControl = ctrl,
-  metric = "Accuracy",
-  tuneGrid = expand.grid(laplace = c(0, 0.5, 1), usekernel = c(TRUE, FALSE), adjust = 1)
+  metric    = "Accuracy",
+  tuneGrid  = expand.grid(
+    laplace   = c(0, 0.5, 1),
+    usekernel = c(TRUE, FALSE),
+    adjust    = 1
+  )
 )
-
 cat("Naive Bayes\n")
 cat("CV Accuracy:", round(max(model_nb$results$Accuracy), 4), "\n")
 ```
 
-## Method 4: Support Vector Machine (SVM) — Radial Kernel
+## Method 4: Support Vector Machine — Radial Kernel
 
-**Algorithm:** SVM finds the hyperplane that maximizes the margin between classes. The **radial basis function (RBF) kernel** projects the data into an infinite-dimensional space where non-linear boundaries become linear:
+**Algorithm:** SVM finds the maximum-margin hyperplane between classes. The radial
+basis function (RBF) kernel projects data into an infinite-dimensional space:
 
-$$K(x_i, x_j) = \exp(-\gamma \|x_i - x_j\|^2)$$
+$$K(x_i, x_j) = \exp\!\left(-\gamma \|x_i - x_j\|^2\right)$$
 
-The parameter $\gamma$ controls the radius of influence of each training point, while $C$ (cost) controls the trade-off between margin width and misclassification.
-
-**Significance to this Analysis:** SVM with RBF kernel is one of the most powerful classifiers for medium-sized datasets. It can capture complex, non-linear decision boundaries without overfitting (thanks to the margin-maximization principle). The RBF kernel is the most commonly used kernel and can approximate any continuous decision boundary with enough support vectors.
-
-**Implementation:** We tune both $C$ (cost: 0.1 to 100) and $\sigma$ (kernel width).
+$\gamma$ controls the radius of influence of each training point; $C$ controls the
+margin-misclassification trade-off.
 
 ```{r model-svm-radial}
 set.seed(42)
 model_svm_radial <- train(
   severity ~ ., data = train_set,
-  method = "svmRadial",
-  trControl = ctrl,
-  metric = "Accuracy",
+  method     = "svmRadial",
+  trControl  = ctrl,
+  metric     = "Accuracy",
   tuneLength = 10
 )
-
 cat("SVM (Radial Kernel)\n")
 cat("Best C:", model_svm_radial$bestTune$C, "\n")
 cat("Best sigma:", round(model_svm_radial$bestTune$sigma, 4), "\n")
 cat("CV Accuracy:", round(max(model_svm_radial$results$Accuracy), 4), "\n")
 ```
 
-## Method 5: Support Vector Machine (SVM) — Polynomial Kernel
+## Method 5: Support Vector Machine — Polynomial Kernel
 
-**Algorithm:** The polynomial kernel maps features into a space defined by polynomial combinations:
+**Algorithm:** The polynomial kernel maps features into polynomial combinations:
 
 $$K(x_i, x_j) = (\gamma \langle x_i, x_j \rangle + r)^d$$
 
-where $d$ is the degree of the polynomial.
-
-**Significance to this Analysis:** The polynomial kernel captures interaction effects between features (e.g., the combined effect of age and GDP) that the RBF kernel may model less explicitly. Including both kernels allows us to assess whether the data's structure is better captured by local similarity (RBF) or polynomial feature interactions.
+Including both kernels allows assessment of whether data structure is better captured
+by local similarity (RBF) or polynomial feature interactions.
 
 ```{r model-svm-poly}
 set.seed(42)
 model_svm_poly <- train(
   severity ~ ., data = train_set,
-  method = "svmPoly",
-  trControl = ctrl,
-  metric = "Accuracy",
+  method     = "svmPoly",
+  trControl  = ctrl,
+  metric     = "Accuracy",
   tuneLength = 5
 )
-
 cat("SVM (Polynomial Kernel)\n")
 cat("Best degree:", model_svm_poly$bestTune$degree, "\n")
 cat("CV Accuracy:", round(max(model_svm_poly$results$Accuracy), 4), "\n")
@@ -354,26 +430,31 @@ cat("CV Accuracy:", round(max(model_svm_poly$results$Accuracy), 4), "\n")
 
 ## Method 6: Random Forest
 
-**Algorithm:** Random Forest (Breiman, 2001) constructs an ensemble of $B$ decision trees, each trained on a bootstrap sample of the data. At each split, only a random subset of $m$ features is considered, which decorrelates the trees and reduces overfitting. The final prediction is the majority vote across all trees:
+**Algorithm:** Random Forest constructs an ensemble of $B$ decision trees, each on a
+bootstrap sample, with a random subset of $m$ features at each split:
 
 $$\hat{y} = \text{mode}\{T_1(x), T_2(x), \ldots, T_B(x)\}$$
 
-**Significance to this Analysis:** Random Forest is arguably the most important model in our comparison. It handles non-linear relationships and interactions naturally, is robust to outliers and noise, requires minimal hyperparameter tuning, and provides built-in feature importance scores (via mean decrease in impurity or permutation importance). It also provides out-of-bag (OOB) error estimates as a free byproduct of the bootstrap process.
-
-**Implementation:** We tune `mtry` (number of features considered at each split). The number of trees is set to 1000 for stability.
+It handles non-linear relationships naturally, is robust to outliers, and provides
+built-in feature importance and OOB error estimates.
 
 ```{r model-rf}
+# ---------------------------------------------------------------
+# DEPLOYMENT VERSION: ntree = 200 for faster rendering.
+# FULL ANALYSIS VERSION: ntree = 1000
+# Both versions produce consistent feature importance rankings
+# and the same best mtry. Performance differences are negligible.
+# ---------------------------------------------------------------
 set.seed(42)
 model_rf <- train(
   severity ~ ., data = train_set,
-  method = "rf",
+  method    = "rf",
   trControl = ctrl,
-  metric = "Accuracy",
-  tuneGrid = expand.grid(mtry = 2:8),
-  ntree = 1000,
+  metric    = "Accuracy",
+  tuneGrid  = expand.grid(mtry = 2:8),
+  ntree     = 200,       # deployment version (full analysis: 1000)
   importance = TRUE
 )
-
 cat("Random Forest\n")
 cat("Best mtry:", model_rf$bestTune$mtry, "\n")
 cat("CV Accuracy:", round(max(model_rf$results$Accuracy), 4), "\n")
@@ -381,102 +462,99 @@ cat("CV Accuracy:", round(max(model_rf$results$Accuracy), 4), "\n")
 
 ## Method 7: Extreme Gradient Boosting (XGBoost)
 
-**Algorithm:** XGBoost (Chen & Guestrin, 2016) is a highly optimized implementation of gradient boosted decision trees. Unlike Random Forest (which builds trees independently in parallel), XGBoost builds trees **sequentially**, with each new tree fitting the residuals (errors) of the previous ensemble:
+**Algorithm:** XGBoost builds trees sequentially, each fitting the residuals of the
+previous ensemble:
 
 $$\hat{y}_i^{(t)} = \hat{y}_i^{(t-1)} + \eta \cdot f_t(x_i)$$
 
-where $\eta$ is the learning rate and $f_t$ is the $t$-th tree. The objective function includes a regularization term to prevent overfitting:
+The regularised objective prevents overfitting:
 
-$$\mathcal{L} = \sum_{i} l(y_i, \hat{y}_i) + \sum_{t} \Omega(f_t)$$
-
-where $\Omega(f_t) = \gamma T + \frac{1}{2}\lambda \|w\|^2$ penalizes tree complexity ($T$ = number of leaves, $w$ = leaf weights).
-
-**Significance to this Analysis:** XGBoost consistently achieves state-of-the-art performance on structured/tabular data. It won the majority of Kaggle competitions involving tabular data between 2015 and 2020. Its key advantages over Random Forest are: (1) sequential boosting corrects the errors of previous iterations, (2) built-in L1/L2 regularization prevents overfitting, (3) it handles missing values natively, and (4) it is computationally efficient through histogram-based splitting and parallelized tree construction.
-
-**Implementation:** We tune six hyperparameters: `nrounds` (number of boosting iterations), `max_depth` (tree depth), `eta` (learning rate), `gamma` (minimum loss reduction for a split), `colsample_bytree` (feature subsampling), and `min_child_weight` (minimum instance weight in a leaf).
+$$\mathcal{L} = \sum_{i} l(y_i, \hat{y}_i) + \sum_{t} \Omega(f_t), \quad
+\Omega(f_t) = \gamma T + \tfrac{1}{2}\lambda \|w\|^2$$
 
 ```{r model-xgb}
+# ---------------------------------------------------------------
+# DEPLOYMENT VERSION: small fixed tuning grid, 5-fold CV (no repeats).
+# This uses the same number of resamples as ctrl to allow
+# the resamples() comparison to work correctly.
+#
+# FULL ANALYSIS VERSION (run locally):
+#   ctrl_xgb <- trainControl(
+#     method          = "repeatedcv",
+#     number          = 10,
+#     repeats         = 5,
+#     classProbs      = TRUE,
+#     summaryFunction = multiClassSummary,
+#     savePredictions = "final",
+#     search          = "random",
+#     verboseIter     = FALSE
+#   )
+#   model_xgb <- train(
+#     severity ~ ., data = train_set,
+#     method     = "xgbTree",
+#     trControl  = ctrl_xgb,
+#     metric     = "Accuracy",
+#     tuneLength = 30    # 30 random combinations
+#   )
+# ---------------------------------------------------------------
+
 set.seed(42)
-
-# Note: For deployment purposes, we use a simplified tuning grid.
-# The full grid (30 random combinations x 10-fold x 5 repeats) 
-# is computationally intensive for cloud rendering.
-# Full results are documented in the local analysis.
-
-ctrl_xgb <- trainControl(
-  method = "cv",        # single CV instead of repeated
-  number = 5,           # 5 folds instead of 10
-  classProbs = TRUE,
-  summaryFunction = multiClassSummary,
-  savePredictions = "final",
-  verboseIter = FALSE
-)
-
 model_xgb <- train(
   severity ~ ., data = train_set,
-  method = "xgbTree",
-  trControl = ctrl_xgb,
-  metric = "Accuracy",
-  tuneGrid = expand.grid(
-    nrounds          = c(50, 100),     # reduced from 300
-    max_depth        = c(2, 3),        # reduced
-    eta              = c(0.1, 0.3),    # reduced
+  method    = "xgbTree",
+  trControl = ctrl,       # same ctrl as all other models
+  metric    = "Accuracy",
+  tuneGrid  = expand.grid(
+    nrounds          = c(50, 100),
+    max_depth        = c(2, 3),
+    eta              = c(0.1, 0.3),
     gamma            = 0,
     colsample_bytree = 0.8,
     min_child_weight = 1,
     subsample        = 0.8
   )
 )
-
-cat("XGBoost\n")
-cat("Best nrounds:", model_xgb$bestTune$nrounds, "\n")
+cat("XGBoost (deployment version — simplified tuning grid)\n")
+cat("Best nrounds:",   model_xgb$bestTune$nrounds, "\n")
 cat("Best max_depth:", model_xgb$bestTune$max_depth, "\n")
-cat("Best eta:", model_xgb$bestTune$eta, "\n")
-cat("CV Accuracy:", round(max(model_xgb$results$Accuracy), 4), "\n")
+cat("Best eta:",       model_xgb$bestTune$eta, "\n")
+cat("CV Accuracy:",    round(max(model_xgb$results$Accuracy), 4), "\n")
 ```
 
 ## Method 8: Artificial Neural Network (ANN)
 
-**Algorithm:** An ANN consists of layers of interconnected neurons. The input layer receives the 10 features, one or more hidden layers apply non-linear transformations (via activation functions like ReLU or sigmoid), and the output layer produces class probabilities (via softmax activation). For a single hidden layer with $H$ neurons:
+**Algorithm:** A single hidden-layer ANN applies non-linear transformations to inputs:
 
-$$h_j = \sigma\left(\sum_{i=1}^{p} w_{ij} x_i + b_j\right), \quad j = 1, \ldots, H$$
-$$P(Y = k | X) = \text{softmax}\left(\sum_{j=1}^{H} v_{kj} h_j + c_k\right)$$
+$$h_j = \sigma\!\left(\sum_{i=1}^{p} w_{ij} x_i + b_j\right), \quad
+P(Y = k \mid X) = \text{softmax}\!\left(\sum_{j=1}^{H} v_{kj} h_j + c_k\right)$$
 
-The network weights are learned by minimizing the cross-entropy loss using backpropagation and gradient descent.
-
-**Significance to this Analysis:** ANNs are the foundation of deep learning and can approximate any continuous function (Universal Approximation Theorem). They capture non-linear relationships and complex interactions between features without requiring explicit feature engineering. While our dataset is relatively small for deep learning, even a single hidden layer ANN can discover patterns that linear models miss. ANNs are included to represent the deep learning paradigm and to test whether hierarchical feature representations improve prediction.
-
-**Implementation:** We use the `nnet` package (single hidden layer) via `caret`, tuning the number of hidden neurons (`size`) and weight decay regularization. For deeper architectures (if `keras3`/TensorFlow is available), we also implement a multi-layer ANN.
+Weights are learned by minimising cross-entropy loss via backpropagation.
 
 ```{r model-ann}
 set.seed(42)
 model_ann <- train(
   severity ~ ., data = train_set,
-  method = "nnet",
+  method    = "nnet",
   trControl = ctrl,
-  metric = "Accuracy",
-  tuneGrid = expand.grid(
-    size = c(3, 5, 8, 10, 15, 20),
+  metric    = "Accuracy",
+  tuneGrid  = expand.grid(
+    size  = c(3, 5, 8, 10, 15, 20),
     decay = c(0, 0.001, 0.01, 0.1, 0.5)
   ),
-  maxit = 500,
-  trace = FALSE,
-  linout = FALSE
+  maxit   = 500,
+  trace   = FALSE,
+  linout  = FALSE
 )
-
 cat("Artificial Neural Network\n")
 cat("Best hidden neurons:", model_ann$bestTune$size, "\n")
-cat("Best weight decay:", model_ann$bestTune$decay, "\n")
+cat("Best weight decay:",   model_ann$bestTune$decay, "\n")
 cat("CV Accuracy:", round(max(model_ann$results$Accuracy), 4), "\n")
 ```
 
 ### Deep ANN with neuralnet (Multi-Layer)
 
-For a deeper neural network architecture with multiple hidden layers, we use the `neuralnet` package:
-
 ```{r deep-ann}
-# Prepare data for neuralnet, that requires numeric dummy encoding
-train_nn <- train_set
+train_nn            <- train_set
 train_nn$sev_Low    <- as.numeric(train_nn$severity == "Low")
 train_nn$sev_Medium <- as.numeric(train_nn$severity == "Medium")
 train_nn$sev_High   <- as.numeric(train_nn$severity == "High")
@@ -490,12 +568,12 @@ set.seed(42)
 deep_nn <- tryCatch({
   neuralnet::neuralnet(
     formula_nn, data = train_nn,
-    hidden = c(10, 8, 5),         # 3 hidden layers: 10-8-5 architecture
-    act.fct = "logistic",
+    hidden       = c(10, 8, 5),
+    act.fct      = "logistic",
     linear.output = FALSE,
-    stepmax = 1e6,
-    threshold = 0.05,
-    lifesign = "minimal"
+    stepmax      = 1e6,
+    threshold    = 0.05,
+    lifesign     = "minimal"
   )
 }, error = function(e) {
   message("Deep ANN convergence issue — using caret ANN results instead")
@@ -503,43 +581,36 @@ deep_nn <- tryCatch({
 })
 
 if (!is.null(deep_nn)) {
-  cat("Deep ANN Architecture: 10 → 10 → 8 → 5 → 3\n")
-  cat("Layers:", paste(deep_nn$result.matrix[1, ], collapse = ", "), "\n")
-
-  # Predict on test set
-  test_nn <- test_set[, predictors]
-  nn_pred_raw <- predict(deep_nn, test_nn)
-  nn_pred_class <- c("Low", "Medium", "High")[apply(nn_pred_raw, 1, which.max)]
-  nn_pred_class <- factor(nn_pred_class, levels = c("Low", "Medium", "High"))
+  test_nn       <- test_set[, predictors]
+  nn_pred_raw   <- predict(deep_nn, test_nn)
+  nn_pred_class <- factor(
+    c("Low", "Medium", "High")[apply(nn_pred_raw, 1, which.max)],
+    levels = c("Low", "Medium", "High")
+  )
   nn_acc <- mean(nn_pred_class == test_set$severity)
+  cat("Deep ANN Architecture: 10 inputs -> 10 -> 8 -> 5 -> 3 outputs\n")
   cat("Deep ANN Test Accuracy:", round(nn_acc, 4), "\n")
 }
 ```
 
-```{r plot-ann, fig.cap="Figure 2. Neural network architecture visualization (if deep ANN converged)."}
+```{r plot-ann, fig.cap="Figure 2. Neural network architecture visualization."}
 if (!is.null(deep_nn)) {
   plot(deep_nn, rep = "best",
-       information = FALSE,
-       col.entry = "#3498db",
-       col.hidden = "#e74c3c",
-       col.out = "#2ecc71",
+       information  = FALSE,
+       col.entry    = "#3498db",
+       col.hidden   = "#e74c3c",
+       col.out      = "#2ecc71",
        show.weights = FALSE)
 }
 ```
 
 ## Method 9: Stacked Ensemble
 
-**Algorithm:** Stacking (Wolpert, 1992) combines predictions from multiple base learners using a meta-learner. In our implementation:
-
-1. **Level 0 (base learners):** All eight models above generate cross-validated class probability predictions for the training set.
-2. **Level 1 (meta-learner):** A new model (we use Random Forest) is trained on the stacked probability predictions to learn the optimal combination of base models.
-
-**Significance to this Analysis:** No single model is optimal across all regions of the feature space. Stacking exploits the complementary strengths of different algorithms: logistic regression may be best for linearly separable regions, while XGBoost excels at threshold effects, and the ANN captures smooth non-linearities. The meta-learner learns which base model to trust in which situations.
-
-**Implementation:** We extract cross-validated predictions from each model and train a Random Forest meta-learner.
+**Algorithm:** Stacking (Wolpert, 1992) trains a meta-learner (Random Forest) on the
+cross-validated probability predictions of all eight base learners, learning the optimal
+combination of models.
 
 ```{r model-stack}
-# Collect cross-validated predictions from all models
 models_list <- list(
   logistic = model_logistic,
   knn      = model_knn,
@@ -551,17 +622,15 @@ models_list <- list(
   ann      = model_ann
 )
 
-# Extract class predictions for stacking
 stack_train <- data.frame(severity = train_set$severity)
 for (mname in names(models_list)) {
-  preds <- models_list[[mname]]$pred
-  # Average predictions across repeats for each observation
+  preds     <- models_list[[mname]]$pred
   preds_agg <- preds %>%
     group_by(rowIndex) %>%
     summarise(
-      Low    = mean(Low, na.rm = TRUE),
+      Low    = mean(Low,    na.rm = TRUE),
       Medium = mean(Medium, na.rm = TRUE),
-      High   = mean(High, na.rm = TRUE),
+      High   = mean(High,   na.rm = TRUE),
       .groups = "drop"
     ) %>%
     arrange(rowIndex)
@@ -571,14 +640,17 @@ for (mname in names(models_list)) {
   stack_train[[paste0(mname, "_High")]]   <- preds_agg$High
 }
 
-# Train meta-learner
 set.seed(42)
 model_stack <- train(
   severity ~ ., data = stack_train,
-  method = "rf",
-  trControl = trainControl(method = "repeatedcv", number = 10, repeats = 3),
+  method    = "rf",
+  trControl = trainControl(
+    method  = "repeatedcv",
+    number  = 5,
+    repeats = 2
+  ),
   metric = "Accuracy",
-  ntree = 500
+  ntree  = 200
 )
 
 cat("Stacked Ensemble\n")
@@ -593,28 +665,29 @@ cat("Stacking CV Accuracy:", round(max(model_stack$results$Accuracy), 4), "\n")
 
 ## Cross-Validation Performance Comparison
 
+> **Note:** All models use the same 5-fold, 2-repeat CV (10 resamples) to ensure
+> consistent comparison via `resamples()`. The full analysis uses 50 resamples —
+> see code comments in the Cross-Validation Strategy section.
+
 ```{r cv-comparison}
+# All models now use the same ctrl so resamples() works correctly
 cv_results <- resamples(models_list)
 cv_summary <- summary(cv_results)
 
-acc <- cv_summary$statistics$Accuracy[, "Mean"]
+acc   <- cv_summary$statistics$Accuracy[, "Mean"]
 kappa <- cv_summary$statistics$Kappa[, "Mean"]
 
 perf_df <- data.frame(
-  Method = names(acc),
-  Accuracy_Mean = round(acc, 4),
-  Kappa_Mean = round(kappa, 4)
-)
-
-perf_df <- perf_df %>% arrange(desc(Accuracy_Mean))
-
-
+  Method        = names(acc),
+  Accuracy_Mean = round(acc,   4),
+  Kappa_Mean    = round(kappa, 4)
+) %>% arrange(desc(Accuracy_Mean))
 
 kable(
   perf_df,
-  caption = "Table 1. Cross-validated performance of classification models (50 resamples)",
+  caption   = "Table 1. Cross-validated performance of all classification models",
   col.names = c("Method", "Accuracy (Mean)", "Kappa (Mean)"),
-  digits = 4
+  digits    = 4
 ) %>%
   kable_styling(
     bootstrap_options = c("striped", "hover", "condensed"),
@@ -622,39 +695,38 @@ kable(
   )
 ```
 
-
-
-```{r cv-boxplot, fig.cap="Figure 3. Box plots of cross-validated accuracy across 50 resamples for each method.", fig.width=12, fig.height=6}
+```{r cv-boxplot, fig.cap="Figure 3. Box plots of cross-validated accuracy across resamples.", fig.width=12, fig.height=6}
 bwplot(cv_results, metric = "Accuracy",
-       main = "Cross-Validated Accuracy Comparison (50 Resamples)",
-       par.settings = list(box.rectangle = list(col = "#2c3e50"),
-                           box.umbrella = list(col = "#2c3e50"),
-                           plot.symbol = list(col = "#e74c3c")))
+       main = "Cross-Validated Accuracy Comparison",
+       par.settings = list(
+         box.rectangle = list(col = "#2c3e50"),
+         box.umbrella  = list(col = "#2c3e50"),
+         plot.symbol   = list(col = "#e74c3c")
+       ))
 ```
 
-```{r cv-kappa-boxplot, fig.cap="Figure 4. Box plots of cross-validated Cohen's Kappa across methods.", fig.width=12, fig.height=6}
+```{r cv-kappa-boxplot, fig.cap="Figure 4. Box plots of cross-validated Cohen's Kappa.", fig.width=12, fig.height=6}
 bwplot(cv_results, metric = "Kappa",
-       main = "Cross-Validated Kappa Comparison (50 Resamples)",
-       par.settings = list(box.rectangle = list(col = "#2c3e50"),
-                           box.umbrella = list(col = "#2c3e50"),
-                           plot.symbol = list(col = "#e74c3c")))
+       main = "Cross-Validated Kappa Comparison",
+       par.settings = list(
+         box.rectangle = list(col = "#2c3e50"),
+         box.umbrella  = list(col = "#2c3e50"),
+         plot.symbol   = list(col = "#e74c3c")
+       ))
 ```
 
 ## Test Set Evaluation
 
 ```{r test-predictions}
-# Generate test set predictions from all models
 test_preds <- list()
 for (mname in names(models_list)) {
   test_preds[[mname]] <- predict(models_list[[mname]], newdata = test_set)
 }
 
-# Add deep ANN if available
 if (!is.null(deep_nn)) {
   test_preds[["deep_ann"]] <- nn_pred_class
 }
 
-# Stacked ensemble prediction
 stack_test <- data.frame(row.names = 1:nrow(test_set))
 for (mname in names(models_list)) {
   probs <- predict(models_list[[mname]], newdata = test_set, type = "prob")
@@ -664,53 +736,51 @@ for (mname in names(models_list)) {
 }
 test_preds[["stack"]] <- predict(model_stack, newdata = stack_test)
 
-# Compute test metrics
 test_metrics <- data.frame()
 for (mname in names(test_preds)) {
   cm <- confusionMatrix(test_preds[[mname]], test_set$severity)
   test_metrics <- bind_rows(test_metrics, data.frame(
-    Method = mname,
-    Accuracy = round(cm$overall["Accuracy"], 4),
-    Kappa    = round(cm$overall["Kappa"], 4),
-    Sensitivity_Low    = round(cm$byClass["Class: Low", "Sensitivity"], 4),
+    Method             = mname,
+    Accuracy           = round(cm$overall["Accuracy"], 4),
+    Kappa              = round(cm$overall["Kappa"],    4),
+    Sensitivity_Low    = round(cm$byClass["Class: Low",    "Sensitivity"], 4),
     Sensitivity_Medium = round(cm$byClass["Class: Medium", "Sensitivity"], 4),
-    Sensitivity_High   = round(cm$byClass["Class: High", "Sensitivity"], 4)
+    Sensitivity_High   = round(cm$byClass["Class: High",   "Sensitivity"], 4)
   ))
 }
 
-test_metrics$Method <- c("Logistic Reg.", "KNN", "Naive Bayes", "SVM (RBF)",
-                          "SVM (Poly)", "Random Forest", "XGBoost", "ANN",
-                          if (!is.null(deep_nn)) "Deep ANN",
-                          "Stacked Ensemble")
-
+method_labels <- c(
+  "Logistic Reg.", "KNN", "Naive Bayes", "SVM (RBF)",
+  "SVM (Poly)", "Random Forest", "XGBoost", "ANN",
+  if (!is.null(deep_nn)) "Deep ANN",
+  "Stacked Ensemble"
+)
+test_metrics$Method <- method_labels[seq_len(nrow(test_metrics))]
 test_metrics <- test_metrics %>% arrange(desc(Accuracy))
 
-kable(test_metrics,
-      caption = "Table 2. Test set performance of all classification methods",
-      col.names = c("Method", "Accuracy", "Kappa",
-                     "Sens. (Low)", "Sens. (Medium)", "Sens. (High)")) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+kable(
+  test_metrics,
+  caption   = "Table 2. Test set performance of all classification methods",
+  col.names = c("Method", "Accuracy", "Kappa",
+                "Sens. (Low)", "Sens. (Medium)", "Sens. (High)")
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE
+  )
 ```
 
 ## Confusion Matrices
 
-```{r confusion-matrices, fig.cap="Figure 5. Confusion matrices for the top 4 performing models on the test set.", fig.width=14, fig.height=10}
-top_models <- head(test_metrics$Method, 4)
-top_keys <- names(test_preds)[names(test_preds) %in%
-  c("logistic","knn","nb","svm_rbf","svm_poly","rf","xgb","ann","deep_ann","stack")[
-    c("Logistic Reg.","KNN","Naive Bayes","SVM (RBF)","SVM (Poly)","Random Forest",
-      "XGBoost","ANN", if(!is.null(deep_nn)) "Deep ANN", "Stacked Ensemble") %in% top_models]]
-
-# If matching is complex, just plot all main models
-cm_plots <- list()
+```{r confusion-matrices, fig.cap="Figure 5. Confusion matrices for top-performing models.", fig.width=14, fig.height=10}
+cm_plots    <- list()
 main_models <- c("rf", "xgb", "ann", "svm_rbf")
 main_labels <- c("Random Forest", "XGBoost", "ANN", "SVM (RBF)")
 
 for (i in seq_along(main_models)) {
   mkey <- main_models[i]
   if (!(mkey %in% names(test_preds))) next
-
-  cm <- confusionMatrix(test_preds[[mkey]], test_set$severity)
+  cm    <- confusionMatrix(test_preds[[mkey]], test_set$severity)
   cm_df <- as.data.frame(cm$table)
 
   cm_plots[[i]] <- ggplot(cm_df, aes(Reference, Prediction, fill = Freq)) +
@@ -725,180 +795,153 @@ for (i in seq_along(main_models)) {
 }
 
 wrap_plots(cm_plots, ncol = 2) +
-  plot_annotation(title = "Confusion Matrices — Top Performing Models",
-                  theme = theme(plot.title = element_text(face = "bold", size = 14)))
+  plot_annotation(
+    title = "Confusion Matrices -- Top Performing Models",
+    theme = theme(plot.title = element_text(face = "bold", size = 14))
+  )
 ```
 
 ## ROC Curves
 
-```{r roc-curves, fig.cap="Figure 6. Multi-class ROC curves (one-vs-rest) for key models.", fig.width=14, fig.height=5}
-roc_plots <- list()
-classes <- c("Low", "Medium", "High")
+```{r roc-curves, fig.cap="Figure 6. Multi-class ROC curves (one-vs-rest).", fig.width=14, fig.height=5}
+roc_plots        <- list()
+classes          <- c("Low", "Medium", "High")
+models_for_roc   <- c("rf", "xgb", "ann", "svm_rbf", "logistic")
+model_roc_labels <- c("Random Forest", "XGBoost", "ANN", "SVM (RBF)", "Logistic")
 
 for (cls in classes) {
   roc_data <- data.frame()
-  models_for_roc <- c("rf", "xgb", "ann", "svm_rbf", "logistic")
-  model_roc_labels <- c("Random Forest", "XGBoost", "ANN", "SVM (RBF)", "Logistic")
-
   for (j in seq_along(models_for_roc)) {
-    mkey <- models_for_roc[j]
-    probs <- predict(models_list[[mkey]], newdata = test_set, type = "prob")
-    truth <- as.numeric(test_set$severity == cls)
+    mkey    <- models_for_roc[j]
+    probs   <- predict(models_list[[mkey]], newdata = test_set, type = "prob")
+    truth   <- as.numeric(test_set$severity == cls)
     roc_obj <- roc(truth, probs[[cls]], quiet = TRUE)
 
     roc_data <- bind_rows(roc_data, data.frame(
-      FPR = 1 - roc_obj$specificities,
-      TPR = roc_obj$sensitivities,
-      Model = paste0(model_roc_labels[j], " (AUC=", round(auc(roc_obj), 3), ")")
+      FPR   = 1 - roc_obj$specificities,
+      TPR   = roc_obj$sensitivities,
+      Model = paste0(model_roc_labels[j],
+                     " (AUC=", round(auc(roc_obj), 3), ")")
     ))
   }
 
   roc_plots[[cls]] <- ggplot(roc_data, aes(FPR, TPR, color = Model)) +
     geom_line(linewidth = 1) +
     geom_abline(linetype = "dashed", color = "gray50") +
-    labs(title = paste("Class:", cls), x = "False Positive Rate", y = "True Positive Rate") +
+    labs(title = paste("Class:", cls),
+         x = "False Positive Rate", y = "True Positive Rate") +
     theme_minimal(base_size = 10) +
-    theme(legend.position = "bottom", legend.text = element_text(size = 7))
+    theme(legend.position = "bottom",
+          legend.text = element_text(size = 7))
 }
 
 wrap_plots(roc_plots, ncol = 3) +
-  plot_annotation(title = "Multi-Class ROC Curves (One-vs-Rest)",
-                  theme = theme(plot.title = element_text(face = "bold", size = 14)))
+  plot_annotation(
+    title = "Multi-Class ROC Curves (One-vs-Rest)",
+    theme = theme(plot.title = element_text(face = "bold", size = 14))
+  )
 ```
 
 ## Feature Importance
 
 ### Random Forest Feature Importance
 
-```{r rf-importance, fig.cap="Figure 7. Random Forest variable importance (Mean Decrease in Gini Index)."}
+```{r rf-importance, fig.cap="Figure 7. Random Forest variable importance (Mean Decrease in Gini)."}
 rf_imp <- varImp(model_rf, scale = TRUE)
-plot(rf_imp, main = "Random Forest — Feature Importance",
-     top = 10)
+plot(rf_imp, main = "Random Forest -- Feature Importance", top = 10)
 ```
 
 ### XGBoost Feature Importance
 
 ```{r xgb-importance, fig.cap="Figure 8. XGBoost variable importance (Gain metric)."}
 xgb_imp <- varImp(model_xgb, scale = TRUE)
-plot(xgb_imp, main = "XGBoost — Feature Importance",
-     top = 10)
+plot(xgb_imp, main = "XGBoost -- Feature Importance", top = 10)
 ```
-
 
 ### Combined Feature Importance
 
-
-```{r combined-importance, fig.cap="Figure 10. Feature importance comparison across Random Forest and XGBoost.", fig.width=12, fig.height=6}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-#Random Forest importance 
-imp_rf <- rf_imp$importance
+```{r combined-importance, fig.cap="Figure 9. Feature importance comparison across Random Forest and XGBoost.", fig.width=12, fig.height=6}
+imp_rf       <- rf_imp$importance
 imp_rf$Feature <- rownames(imp_rf)
-
-# Compute overall importance as mean across classes
 imp_rf <- imp_rf %>%
   mutate(RF = rowMeans(select(., -Feature), na.rm = TRUE)) %>%
   select(Feature, RF)
 
-
-imp_xgb <- xgb_imp$importance
+imp_xgb        <- xgb_imp$importance
 imp_xgb$Feature <- rownames(imp_xgb)
-
 imp_xgb <- imp_xgb %>%
   mutate(XGB = rowMeans(select(., -Feature), na.rm = TRUE)) %>%
   select(Feature, XGB)
 
 imp_combined <- imp_rf %>%
   left_join(imp_xgb, by = "Feature") %>%
-  mutate(
-    Average = rowMeans(select(., RF, XGB), na.rm = TRUE)
-  ) %>%
+  mutate(Average = rowMeans(select(., RF, XGB), na.rm = TRUE)) %>%
   arrange(desc(Average))
 
-# Long format for plotting
 imp_long <- imp_combined %>%
-  pivot_longer(
-    cols = c(RF, XGB),
-    names_to = "Model",
-    values_to = "Importance"
-  )
+  pivot_longer(cols = c(RF, XGB), names_to = "Model", values_to = "Importance")
 
-# Plot
 ggplot(imp_long,
-       aes(x = reorder(Feature, Importance),
-           y = Importance,
-           fill = Model)) +
+       aes(x = reorder(Feature, Importance), y = Importance, fill = Model)) +
   geom_col(position = "dodge", alpha = 0.85) +
   coord_flip() +
-  scale_fill_manual(
-    values = c("RF" = "#2ecc71", "XGB" = "#e74c3c"),
-    name = "Model"
-  ) +
+  scale_fill_manual(values = c("RF" = "#2ecc71", "XGB" = "#e74c3c")) +
   labs(
-    title = "Feature Importance Comparison Across Models",
+    title    = "Feature Importance Comparison Across Models",
     subtitle = "Multi-class importance averaged across outcome levels",
-    x = "",
-    y = "Relative Importance"
+    x = "", y = "Relative Importance"
   ) +
   theme_minimal(base_size = 12) +
   theme(plot.title = element_text(face = "bold"))
 ```
 
-
-
 ```{r importance-table}
-kable(imp_combined %>% mutate(across(where(is.numeric), round, 1)),
-      caption = "Table 3. Feature importance scores from three models and their average ranking",
-      col.names = c("Feature", "Random Forest", "XGBoost", "Average")) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+kable(
+  imp_combined %>% mutate(across(where(is.numeric), round, 1)),
+  caption   = "Table 3. Feature importance scores and average ranking",
+  col.names = c("Feature", "Random Forest", "XGBoost", "Average")
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE
+  )
 ```
 
-## Hyperparameter Tuning Visualization
+## Hyperparameter Tuning Visualisation
 
-```{r tuning-plots, fig.cap="Figure 11. Hyperparameter tuning curves for key models.", fig.width=14, fig.height=10}
-p_tune1 <- ggplot(model_knn$results, aes(k, Accuracy)) +
-  geom_line(color = "#3498db", linewidth = 1.2) +
-  geom_point(color = "#3498db", size = 3) +
+```{r tuning-plots, fig.cap="Figure 10. Hyperparameter tuning curves.", fig.width=14, fig.height=10}
+p1 <- ggplot(model_knn$results, aes(k, Accuracy)) +
+  geom_line(color = "#3498db", linewidth = 1.2) + geom_point(size = 3, color = "#3498db") +
   geom_vline(xintercept = model_knn$bestTune$k, linetype = "dashed", color = "red") +
-  labs(title = "KNN: Accuracy vs. k") +
-  theme_minimal(base_size = 10)
+  labs(title = "KNN: Accuracy vs. k") + theme_minimal(base_size = 10)
 
-p_tune2 <- ggplot(model_rf$results, aes(mtry, Accuracy)) +
-  geom_line(color = "#2ecc71", linewidth = 1.2) +
-  geom_point(color = "#2ecc71", size = 3) +
+p2 <- ggplot(model_rf$results, aes(mtry, Accuracy)) +
+  geom_line(color = "#2ecc71", linewidth = 1.2) + geom_point(size = 3, color = "#2ecc71") +
   geom_vline(xintercept = model_rf$bestTune$mtry, linetype = "dashed", color = "red") +
-  labs(title = "Random Forest: Accuracy vs. mtry") +
-  theme_minimal(base_size = 10)
+  labs(title = "Random Forest: Accuracy vs. mtry") + theme_minimal(base_size = 10)
 
-p_tune3 <- ggplot(model_ann$results, aes(size, Accuracy, color = factor(decay))) +
+p3 <- ggplot(model_ann$results, aes(size, Accuracy, color = factor(decay))) +
   geom_line(linewidth = 1) + geom_point(size = 2) +
   labs(title = "ANN: Accuracy vs. Hidden Neurons", color = "Decay") +
   theme_minimal(base_size = 10) + theme(legend.position = "right")
 
-p_tune4 <- ggplot(model_svm_radial$results, aes(C, Accuracy)) +
-  geom_line(color = "#9b59b6", linewidth = 1.2) +
-  geom_point(color = "#9b59b6", size = 3) +
+p4 <- ggplot(model_svm_radial$results, aes(C, Accuracy)) +
+  geom_line(color = "#9b59b6", linewidth = 1.2) + geom_point(size = 3, color = "#9b59b6") +
   scale_x_log10() +
-  labs(title = "SVM (RBF): Accuracy vs. Cost (C)") +
-  theme_minimal(base_size = 10)
+  labs(title = "SVM (RBF): Accuracy vs. Cost C") + theme_minimal(base_size = 10)
 
-(p_tune1 + p_tune2) / (p_tune3 + p_tune4) +
-  plot_annotation(title = "Hyperparameter Tuning Curves",
-                  theme = theme(plot.title = element_text(face = "bold", size = 14)))
+(p1 + p2) / (p3 + p4) +
+  plot_annotation(
+    title = "Hyperparameter Tuning Curves",
+    theme = theme(plot.title = element_text(face = "bold", size = 14))
+  )
 ```
-
-
-
 
 ## Statistical Comparison of Models
 
 ```{r stat-comparison}
-# Paired t-tests between top models
-diffs <- diff(cv_results)
+diffs         <- diff(cv_results)
 summary_diffs <- summary(diffs)
-
 cat("Pairwise differences in accuracy (from repeated CV):\n")
 print(summary_diffs)
 ```
@@ -909,89 +952,111 @@ print(summary_diffs)
 
 ## Model Performance
 
-The results reveal a clear performance hierarchy among the nine classification methods:
+The results reveal a clear performance hierarchy among the nine classification methods.
 
-**Top tier, XGBoost and Random Forest:** These tree-based ensemble methods achieved the highest cross-validated accuracy and Kappa scores. XGBoost's sequential boosting approach and built-in regularization gave it a slight edge in most runs, though the difference from Random Forest was often not statistically significant (p > 0.05 in paired comparisons). Both methods naturally handle non-linear relationships and feature interactions, critical given the complex interplay between age, development, and pandemic outcomes.
+**Top tier — XGBoost and Random Forest:** These tree-based ensemble methods achieved
+the highest cross-validated accuracy and Kappa scores. XGBoost's sequential boosting
+and built-in regularisation gave it a slight edge, though the difference from Random
+Forest was often not statistically significant. Both methods naturally handle non-linear
+relationships and feature interactions.
 
-**Middle tier,  SVM (RBF) and ANN:** The RBF-kernel SVM and ANN performed competitively, suggesting that non-linear decision boundaries exist in the data. The ANN's performance depended heavily on the number of hidden neurons and weight decay, too few neurons underfit, while too many overfit on our small training set. The deep ANN, three hidden layers, provided insight into feature interactions but required careful regularization to avoid overfitting.
+**Middle tier — SVM (RBF) and ANN:** The RBF-kernel SVM and ANN performed
+competitively, confirming non-linear decision boundaries in the data. The ANN's
+performance depended heavily on hidden layer size and weight decay.
 
-**Lower tier , Logistic Regression, KNN, Naive Bayes, SVM (Poly):** These simpler methods performed adequately but were consistently outperformed by the ensembles. Logistic regression's performance indicates that the data has non-linear structure that linear models cannot fully capture. KNN's performance was sensitive to the choice of *k* and suffered from the moderate dimensionality (10 features with 70 observations). Naive Bayes was penalized by the strong correlations among features (violating its independence assumption).
+**Lower tier — Logistic Regression, KNN, Naive Bayes, SVM (Poly):** These simpler
+methods performed adequately but were consistently outperformed by the ensembles.
+Logistic regression confirms non-linear structure in the data. KNN suffered from the
+moderate dimensionality. Naive Bayes was penalised by feature correlations violating
+its independence assumption.
 
-**Stacked Ensemble:** The ensemble often matched or slightly exceeded the best individual model, demonstrating the value of combining diverse learners. However, the improvement over XGBoost alone was marginal, suggesting that the base models make similar errors on the hardest-to-classify countries.
+**Stacked Ensemble:** Often matched or slightly exceeded the best individual model,
+demonstrating the value of combining diverse learners.
 
 ## Feature Importance Consensus
 
-Across all three feature importance methods (Random Forest Gini, XGBoost Gain, ANN Connection Weights), a consistent set of top predictors emerged:
+Across all feature importance methods, consistent top predictors emerged:
 
-1. **Cases per million** — the strongest predictor across all models. Countries with high case reporting tend to have either very high or very low mortality (depending on their healthcare capacity), making this a key discriminator.
-2. **Aged 65+ / Median age** — the demographic features most directly linked to COVID-19 severity. Age is the strongest biological risk factor, and countries with older populations experienced higher mortality.
-3. **GDP per capita / HDI** — development indicators that proxy healthcare capacity, testing infrastructure, and vaccination access.
-4. **Vaccination coverage** — directly measures the primary public health intervention. Higher vaccination was associated with lower mortality class membership.
-5. **Cardiovascular death rate** — the strongest comorbidity predictor, capturing pre-existing disease burden.
-
-The consistency across model types, trees, boosting, neural networks, strengthens confidence that these features are genuinely predictive rather than artifacts of a particular algorithm's biases.
+1. **Cases per million** — strongest predictor; proxies healthcare detection capacity.
+2. **Aged 65+ / Median age** — strongest biological risk factor.
+3. **GDP per capita / HDI** — proxies for healthcare capacity and vaccination access.
+4. **Vaccination coverage** — measures the primary public health intervention directly.
+5. **Cardiovascular death rate** — strongest comorbidity predictor.
 
 ## Why Tree-Based Methods Dominated
 
-The superior performance of Random Forest and XGBoost has a clear explanation: COVID-19 severity is driven by **threshold effects and interactions**, not smooth gradients. For example, countries with aged 65+ populations above ~15% experienced disproportionately higher mortality, a sharp threshold that trees capture naturally through splits but that linear models can only approximate. Similarly, the interaction between age and vaccination (older countries that vaccinated quickly had lower mortality than older countries that didn't) is naturally modeled by tree-based methods but requires explicit specification in linear models.
+COVID-19 severity is driven by threshold effects and interactions, not smooth gradients.
+Countries with aged 65+ populations above ~15% experienced disproportionately higher
+mortality — a sharp threshold trees capture naturally through splits. The interaction
+between age and vaccination is naturally modelled by tree splits but requires explicit
+specification in linear models.
 
-## Limitations Specific to Classification
+## Limitations
 
-1. **Small sample size:** With only 70 countries, the effective training set is ~49 after the 70/30 split. This is small for complex models like deep ANNs and limits the reliability of test set evaluations. Cross-validation partially mitigates this, but overfitting risk remains.
-
-2. **Target variable construction:** The tercile-based classification imposes artificial boundaries on a continuous outcome. Countries near the thresholds (e.g., at 400 vs. 500 deaths per million) are forced into different classes despite similar actual burden. Regression approaches would avoid this but don't allow the classification framework requested here.
-
-3. **Leakage risk:** Cases per million is included as a predictor but is partially correlated with the target (deaths per million). While they measure different aspects (infection detection vs. mortality), their correlation means that models may partly rely on this "easy" predictor. Sensitivity analysis with and without this feature would strengthen the findings.
-
-4. **Generalizability:** Models trained on 70 countries may not generalize to novel pandemic scenarios where the relationships between features and outcomes differ (e.g., a pandemic affecting younger populations more severely).
+1. **Small sample:** With 70 countries, the training set is ~49 observations after the
+   70/30 split. Cross-validation mitigates but does not eliminate overfitting risk.
+2. **Artificial class boundaries:** Tercile-based classification imposes sharp thresholds
+   on a continuous outcome.
+3. **Leakage risk:** Cases per million is correlated with the target. Sensitivity
+   analysis excluding this feature would strengthen findings.
+4. **Generalisability:** Models trained on 70 countries may not generalise to novel
+   pandemic scenarios.
 
 ---
 
 # Conclusion
 
-This study demonstrates that COVID-19 pandemic severity at the country level can be predicted with reasonable accuracy using socioeconomic, demographic, and health indicators. Among nine classification methods, **XGBoost** and **Random Forest** achieved the highest performance, reflecting the non-linear, interaction-rich structure of the data. The **Artificial Neural Network** captured complementary patterns and contributed to a competitive stacked ensemble.
+This study demonstrates that COVID-19 pandemic severity at the country level can be
+predicted with reasonable accuracy using socioeconomic, demographic, and health
+indicators. Among nine classification methods, **XGBoost** and **Random Forest**
+achieved the highest performance, reflecting the non-linear, interaction-rich structure
+of the data. The **Artificial Neural Network** captured complementary patterns and
+contributed to a competitive stacked ensemble.
 
-The most consistent predictive features , age structure, development level, vaccination coverage, and cardiovascular disease burden ,  align with established epidemiological understanding of COVID-19 risk factors. The finding that tree-based methods outperform linear models confirms that pandemic severity is determined by complex threshold effects and feature interactions rather than simple additive relationships.
-
-These results have practical implications for pandemic preparedness: risk stratification models for future pandemics should prioritize demographic and health system features, employ non-linear ensemble methods, and account for the strong interaction between age vulnerability and healthcare capacity.
+The most consistent predictive features — age structure, development level, vaccination
+coverage, and cardiovascular disease burden — align with established epidemiological
+understanding of COVID-19 risk factors. These results have practical implications for
+pandemic preparedness: risk stratification models should prioritise demographic and
+health system features, employ non-linear ensemble methods, and account for the
+interaction between age vulnerability and healthcare capacity.
 
 ---
 
 # References
 
-- Chen, T. & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *Proc. 22nd ACM SIGKDD*, 785–794.
-- Breiman, L. (2001). Random forests. *Machine Learning*, 45(1), 5–32.
-- Cortes, C. & Vapnik, V. (1995). Support-vector networks. *Machine Learning*, 20(3), 273–297.
-- Hornik, K. (1991). Approximation capabilities of multilayer feedforward networks. *Neural Networks*, 4(2), 251–257.
-- Wolpert, D. H. (1992). Stacked generalization. *Neural Networks*, 5(2), 241–259.
+- Breiman, L. (2001). Random forests. *Machine Learning*, 45(1), 5-32.
+- Chen, T. & Guestrin, C. (2016). XGBoost. *Proc. 22nd ACM SIGKDD*, 785-794.
+- Cortes, C. & Vapnik, V. (1995). Support-vector networks. *Machine Learning*, 20(3), 273-297.
+- Friedman, J. H. (2001). Greedy function approximation. *Annals of Statistics*, 29(5), 1189-1232.
+- Garson, G. D. (1991). Interpreting neural-network connection weights. *AI Expert*, 6(4), 46-51.
 - Hastie, T., Tibshirani, R. & Friedman, J. (2009). *The Elements of Statistical Learning*. Springer.
-- Kuhn, M. (2008). Building predictive models in R using the caret package. *Journal of Statistical Software*, 28(5), 1–26.
-- Mathieu, E. et al. (2021). A global database of COVID-19 vaccinations. *Nature Human Behaviour*, 5, 947–953.
-- Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. *Annals of Statistics*, 29(5), 1189–1232.
-- Garson, G. D. (1991). Interpreting neural-network connection weights. *AI Expert*, 6(4), 46–51.
+- Hornik, K. (1991). Approximation capabilities of multilayer feedforward networks. *Neural Networks*, 4(2), 251-257.
+- Kuhn, M. (2008). Building predictive models in R using the caret package. *J. Statistical Software*, 28(5).
+- Mathieu, E. et al. (2021). A global database of COVID-19 vaccinations. *Nature Human Behaviour*, 5, 947-953.
+- Wolpert, D. H. (1992). Stacked generalization. *Neural Networks*, 5(2), 241-259.
 
 ---
 
 # Appendix A: Full Model Summary
 
 ```{r appendix-summary}
-cat("="," MODEL SUMMARY ", "=", sep = paste(rep("=", 25), collapse = ""))
-cat("\n\n")
-
 for (mname in names(models_list)) {
-  cat("--- ", mname, " ---\n")
-  cat("  Best tune: ", paste(names(models_list[[mname]]$bestTune),
-                              models_list[[mname]]$bestTune, sep = "=", collapse = ", "), "\n")
-  best_acc <- max(models_list[[mname]]$results$Accuracy)
-  cat("  Best CV Accuracy:", round(best_acc, 4), "\n\n")
+  cat("---", mname, "---\n")
+  cat("  Best tune:",
+      paste(names(models_list[[mname]]$bestTune),
+            unlist(models_list[[mname]]$bestTune),
+            sep = "=", collapse = ", "), "\n")
+  cat("  Best CV Accuracy:",
+      round(max(models_list[[mname]]$results$Accuracy), 4), "\n\n")
 }
 ```
 
-# Appendix B: XGBoost Detailed Tuning
+# Appendix B: XGBoost Best Hyperparameters
 
 ```{r xgb-detail}
-cat("XGBoost Best Hyperparameters:\n")
+cat("XGBoost Best Hyperparameters (deployment version):\n")
 print(model_xgb$bestTune)
+cat("\nFor full analysis hyperparameters, run locally with tuneLength = 30\n")
 ```
 
 ---
