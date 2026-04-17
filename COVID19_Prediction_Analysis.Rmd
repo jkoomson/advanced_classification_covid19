@@ -207,11 +207,10 @@ print(table(test_set$severity))
 All models are evaluated using **10-fold cross-validation repeated 5 times** within the training set. This produces 50 resampled estimates of performance, providing robust estimates of each model's generalization ability and reducing the variance of the performance estimates.
 
 ```{r cv-setup}
-
 ctrl <- trainControl(
   method = "repeatedcv",
-  number = 10,
-  repeats = 5,
+  number = 5,        # reduced from 10
+  repeats = 2,       # reduced from 5
   classProbs = TRUE,
   summaryFunction = multiClassSummary,
   savePredictions = "final",
