@@ -452,7 +452,7 @@ model_rf <- train(
   trControl = ctrl,
   metric    = "Accuracy",
   tuneGrid  = expand.grid(mtry = 2:8),
-  ntree     = 200,       # deployment version (full analysis: 1000)
+  ntree     = 100,       # deployment version (full analysis, SET TO 1000)
   importance = TRUE
 )
 cat("Random Forest\n")
@@ -499,21 +499,25 @@ $$\mathcal{L} = \sum_{i} l(y_i, \hat{y}_i) + \sum_{t} \Omega(f_t), \quad
 # ---------------------------------------------------------------
 
 set.seed(42)
+
+
 model_xgb <- train(
   severity ~ ., data = train_set,
   method    = "xgbTree",
-  trControl = ctrl,       # same ctrl as all other models
+  trControl = ctrl,
   metric    = "Accuracy",
   tuneGrid  = expand.grid(
     nrounds          = c(50, 100),
-    max_depth        = c(2, 3),
-    eta              = c(0.1, 0.3),
+    max_depth        = 2,        
+    eta              = 0.1,     
     gamma            = 0,
     colsample_bytree = 0.8,
     min_child_weight = 1,
     subsample        = 0.8
   )
 )
+
+
 cat("XGBoost (deployment version — simplified tuning grid)\n")
 cat("Best nrounds:",   model_xgb$bestTune$nrounds, "\n")
 cat("Best max_depth:", model_xgb$bestTune$max_depth, "\n")
