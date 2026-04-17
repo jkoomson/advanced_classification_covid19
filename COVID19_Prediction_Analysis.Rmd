@@ -944,10 +944,22 @@ p4 <- ggplot(model_svm_radial$results, aes(C, Accuracy)) +
 ## Statistical Comparison of Models
 
 ```{r stat-comparison}
-diffs         <- diff(cv_results)
-summary_diffs <- summary(diffs)
-cat("Pairwise differences in accuracy (from repeated CV):\n")
-print(summary_diffs)
+# Note: paired t-tests require sufficient resamples to be reliable.
+# With the deployment version (10 resamples), some comparisons may
+# not have enough observations. Full analysis (50 resamples) 
+# produces complete pairwise comparisons.
+
+tryCatch({
+  diffs         <- diff(cv_results)
+  summary_diffs <- summary(diffs)
+  cat("Pairwise differences in accuracy (from repeated CV):\n")
+  print(summary_diffs)
+}, error = function(e) {
+  cat("Note: Pairwise t-tests require more resamples for reliable inference.\n")
+  cat("Run the full analysis version (10-fold x 5 repeats) for complete results.\n")
+  cat("\nModel accuracy summary instead:\n")
+  print(summary(cv_results)$statistics$Accuracy[, c("Mean","SD")])
+})
 ```
 
 ---
