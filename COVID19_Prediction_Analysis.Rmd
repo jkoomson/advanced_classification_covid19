@@ -949,6 +949,7 @@ p4 <- ggplot(model_svm_radial$results, aes(C, Accuracy)) +
 # not have enough observations. Full analysis (50 resamples) 
 # produces complete pairwise comparisons.
 
+
 tryCatch({
   diffs         <- diff(cv_results)
   summary_diffs <- summary(diffs)
@@ -956,9 +957,10 @@ tryCatch({
   print(summary_diffs)
 }, error = function(e) {
   cat("Note: Pairwise t-tests require more resamples for reliable inference.\n")
-  cat("Run the full analysis version (10-fold x 5 repeats) for complete results.\n")
-  cat("\nModel accuracy summary instead:\n")
-  print(summary(cv_results)$statistics$Accuracy[, c("Mean","SD")])
+  cat("Run the full analysis (10-fold x 5 repeats) for complete results.\n")
+  cat("\nModel accuracy summary:\n")
+  acc_summary <- summary(cv_results)$statistics$Accuracy
+  print(round(acc_summary, 4))
 })
 ```
 
